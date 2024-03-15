@@ -1,5 +1,14 @@
-use 
+use std::env;
+mod server;
+mod client;
+mod game;
 
 fn main() {
-    let server = Server::init(Hearts::init)
+    let args: Vec<String> = env::args().collect();
+
+    if args.contains("server".to_string()) {
+        Server::start(Hearts::init())
+    } else {
+        
+    }
 }

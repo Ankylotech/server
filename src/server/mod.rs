@@ -9,7 +9,7 @@ struct Server<T: Game> {
 }
 
 impl Server<T: Game> {
-    pub fn init(game: T) -> Result<(Server<T>,)> {
+    pub fn start(game: T) -> Result<_,_>{
         let socket = UdpSocket::bind("127.0.0.1")?;
         socket.set_nonblocking(true)?;
         socket.set_multicast_loop_v4(false)?;
@@ -24,14 +24,14 @@ impl Server<T: Game> {
                 _ => break
             }
         }
-        println("{}", players);
+        println("{:?}", players);
     }
 
 
 
 }
 
-
+#[derive(Debug)]
 struct Player {
     name: String,
     ip: SocketAddr,

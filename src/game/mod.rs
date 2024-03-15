@@ -1,5 +1,8 @@
-trait Game {
+mod hearts;
+mod tictactoe;
 
+trait Game {
+    type Move;
     
 
 }
