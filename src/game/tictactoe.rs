@@ -1,8 +1,5 @@
 use crate::game::Game;
 
-use super::Eval;
-use rand::Rng;
-
 #[derive(Clone, PartialEq, Eq,Debug)]
 pub struct TicTacToe {
     board: [[i32; 3]; 3],
@@ -21,6 +18,10 @@ impl TicTacToe {
 impl Game for TicTacToe {
     type Move = u8;
 
+    fn game_identifier() -> [u8; 6] {
+        ['t' as u8, 'i' as u8, 't' as u8, 'a' as u8, 't' as u8, 'o' as u8]
+    }
+/* 
     fn legal_turns(&self) -> Vec<Self::Move> {
         let mut turns = Vec::new();
 
@@ -117,4 +118,5 @@ impl Game for TicTacToe {
     fn input_size() -> usize {
         9
     }
+    */
 }
