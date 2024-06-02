@@ -28,6 +28,10 @@ impl Game for Hearts {
         todo!()
     }
 
+    fn apply_update(&mut self, update: [u8; 32]) {
+        todo!()
+    }
+
     fn console_move(&mut self, name: &String) {
         todo!()
     }
@@ -37,6 +41,10 @@ impl Game for Hearts {
     }
 
     fn get_gamestate(&self) -> GameState {
+        todo!()
+    }
+
+    fn move_to_network(mv: Self::Move) -> [u8; 30] {
         todo!()
     }
 }

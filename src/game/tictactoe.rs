@@ -74,6 +74,11 @@ impl Game for TicTacToe {
     fn update(&self) -> [u8; 32] {
         todo!()
     }
+
+    fn apply_update(&mut self, update: [u8; 32]) {
+        todo!()
+    }
+
     fn console_move(&mut self, name: &String) {
         self.print_game();
         println!("Legal turns are:");
@@ -128,6 +133,12 @@ impl Game for TicTacToe {
         } else {
             GameState::ONGOING
         }
+    }
+
+    fn move_to_network(mv: Self::Move) -> [u8; 30] {
+        let mut l = [0;30];
+        l[0] = mv;
+        l
     }
     /*
     fn get_turn(&self) -> bool {

@@ -37,9 +37,13 @@ pub trait Game {
 
     fn update(&self) -> [u8; 32];
 
+    fn apply_update(&mut self, update: [u8;32]);
+
     fn console_move(&mut self, name: &String);
 
     fn network_move(&mut self, data: [u8;30], received: usize, player: usize);
 
     fn get_gamestate(&self) -> GameState;
+
+    fn move_to_network(mv: Self::Move) -> [u8; 30];
 }
