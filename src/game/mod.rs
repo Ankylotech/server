@@ -1,6 +1,13 @@
 pub mod hearts;
 pub mod tictactoe;
 
+#[derive(PartialEq, Debug, Clone)]
+pub enum GameState {
+    ONGOING,
+    DRAW,
+    WINNER(usize)
+}
+
 pub trait Game {
     type Move;
     
@@ -23,4 +30,16 @@ pub trait Game {
         }
         result
     }
+
+    fn num_players() -> usize;
+
+    fn players_to_notify(&self) -> Vec<usize>;
+
+    fn update(&self) -> [u8; 32];
+
+    fn console_move(&mut self, name: &String);
+
+    fn network_move(&mut self, data: [u8;30], received: usize, player: usize);
+
+    fn get_gamestate(&self) -> GameState;
 }

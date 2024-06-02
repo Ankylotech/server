@@ -4,13 +4,14 @@ mod client;
 mod game;
 use server::Server;
 use game::hearts::Hearts;
+use crate::game::tictactoe::TicTacToe;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    if args.contains(&"server".to_string()) {
-        Server::start(Hearts::init());
-    } else {
-        println!("Starting locally");
+    let mut server = Server::start(TicTacToe::new()).expect("Failed to initialize server");
+    while server.is_ongoing() {
+        server.play_turn();
     }
+    server.print_result();
 }
