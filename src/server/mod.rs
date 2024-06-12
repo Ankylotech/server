@@ -1,7 +1,6 @@
 use std::net::UdpSocket;
 use std::net::SocketAddr;
 use std::{thread,time};
-use std::cmp::PartialEq;
 use std::io;
 use crate::game::{Game, GameState};
 use crate::server::PlayerType::{Console, Network};
@@ -51,6 +50,15 @@ impl<T: Game> Server<T> {
             GameState::ONGOING => (),
             GameState::DRAW => println!("The game was a draw"),
             GameState::WINNER(index) => println!("Player {index}: {} won!", self.players[index].name),
+        }
+    }
+
+    pub fn notify_all(&self) {
+        for p in self.players {
+            match p.player_type {
+                Network(addr) => { self.socket.send_to(&self.game.update(), addr).expect("Error while sending update to players"); },
+                _ => (),
+            }
         }
     }
 

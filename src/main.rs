@@ -42,6 +42,7 @@ fn main() {
         while server.is_ongoing() {
             server.play_turn();
         }
+        server.notify_all();
         server.print_result();
     }
 }
