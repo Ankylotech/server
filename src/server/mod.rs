@@ -7,7 +7,7 @@ use crate::game::{Game, GameState};
 use crate::server::PlayerType::{Console, Network};
 use crate::ais::AI;
 
-const TURN_TIME: time::Duration = time::Duration::from_millis(1000);
+const TURN_TIME: time::Duration = time::Duration::from_millis(100);
 
 pub struct Server<T: Game> {
     players: Vec<Player<T>>,
@@ -58,22 +58,22 @@ impl<T: Game> Server<T> {
         if !self.is_ongoing() {
             return;
         }
-        println!("getting the next move");
         self.game.print_state();
         let notify = self.game.players_to_notify();
+        println!("getting the next move from {:?}", notify);
         let mut networks = Vec::new();
         let mut console = Vec::new();
         let mut local = Vec::new();
         for i in notify {
             match &self.players[i].player_type {
                 PlayerType::Network(addr) => {
-                    networks.push((self.players[i].name.clone(), addr));
+                    networks.push((self.players[i].name.clone(), addr,i));
                 },
                 PlayerType::Console => console.push(self.players[i].name.clone()),
                 PlayerType::Local(ai) => local.push((self.players[i].name.clone(), ai)),
             }
         }
-        for (_, addr) in networks {
+        for (_, addr,_) in &networks {
             self.socket.send_to(&self.game.update(),addr).expect("Error while sending update to players");
         }
         for (name) in &console {
@@ -82,9 +82,10 @@ impl<T: Game> Server<T> {
         for (_, ai) in local {
             self.game.make_move(ai.get_next_move(&self.game));
         }
-        if console.len() == 0 {
+        if networks.len() > 0 {
             thread::sleep(TURN_TIME);
         }
+        let mut recv = vec![false; self.players.len()];
         loop {
             let mut data = [0; 30];
             match self.socket.recv_from(&mut data) {
@@ -93,11 +94,17 @@ impl<T: Game> Server<T> {
                         Network(address) => address == addr,
                         _ => false,
                     }) {
-                        Some(index) => self.game.network_move(data, received, index),
+                        Some(index) => { recv[index] = true; self.game.network_move(data, received, index) },
                         None => ()
                     }
                 }
                 _ => break,
+            }
+        }
+        for (name,_, index) in networks {
+            if !recv[index] {
+                println!("{} took to long an will make the default move", name);
+                self.game.default_move(index);
             }
         }
 

@@ -27,7 +27,7 @@ impl<T:Game, U:AI<T>> Client<T,U> {
             }
             self.game.apply_update(update);
             let next = self.ai.get_next_move(&self.game);
-            self.socket.send(&T::move_to_network(next)).expect("Failed to send move");
+            self.socket.send(&T::move_to_network(&self.game,next)).expect("Failed to send move");
             if self.game.get_gamestate() != GameState::ONGOING {
                 break;
             }

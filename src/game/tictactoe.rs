@@ -3,14 +3,14 @@ use crate::game::{Game, GameState};
 #[derive(Clone, PartialEq, Eq,Debug)]
 pub struct TicTacToe {
     board: [[i32; 3]; 3],
-    turn: bool,
+    turn: u8,
 }
 
 impl TicTacToe {
     pub fn new() -> Self {
         TicTacToe {
             board: [[0; 3]; 3],
-            turn: true,
+            turn: 0,
         }
     }
 
@@ -63,7 +63,7 @@ impl Game for TicTacToe {
     }
 
     fn players_to_notify(&self) -> Vec<usize> {
-        if (self.turn) { vec![0] } else { vec![1] }
+        if (self.turn % 2 == 0) { vec![0] } else { vec![1] }
     }
 
     fn update(&self) -> [u8; 32] {
@@ -73,12 +73,12 @@ impl Game for TicTacToe {
                 result[i*3 + j] = (self.board[i][j] + 1) as u8;
             }
         }
-        result[9] = if self.turn { 1 } else { 0 };
+        result[9] = self.turn;
         result
     }
 
     fn apply_update(&mut self, update: [u8; 32]) {
-        self.turn = if update[9] == 1 {true} else {false};
+        self.turn = update[9];
         for i in 0..3 {
             for j in 0..3 {
                 self.board[i][j] = update[i * 3 + j] as i32 - 1;
@@ -107,14 +107,16 @@ impl Game for TicTacToe {
         self.make_move((input.parse::<u8>().unwrap() - 1));
     }
     fn network_move(&mut self, data: [u8; 30], received: usize, player: usize) {
-        self.make_move(data[0]);
+        if data[1] == self.turn && player as u8 == self.turn % 2 {
+            self.make_move(data[0]);
+        }
     }
 
     fn make_move(&mut self, turn: <TicTacToe as Game>::Move) {
         let x = turn / 3;
         let y = turn % 3;
-        self.board[x as usize][y as usize] = if self.turn { 1 } else { -1 };
-        self.turn = !self.turn;
+        self.board[x as usize][y as usize] = if self.turn % 2 == 0 { 1 } else { -1 };
+        self.turn+= 1;
     }
 
     fn get_gamestate(&self) -> GameState {
@@ -149,14 +151,19 @@ impl Game for TicTacToe {
         }
     }
 
-    fn move_to_network(mv: Self::Move) -> [u8; 30] {
+    fn move_to_network(&self,mv: Self::Move) -> [u8; 30] {
         let mut l = [0;30];
         l[0] = mv;
+        l[1] = self.turn;
         l
     }
 
     fn print_state(&self) {
         self.print_game();
+    }
+
+    fn default_move(&mut self, player: usize) {
+        self.make_move(self.legal_turns()[0]);
     }
     /*
     fn get_turn(&self) -> bool {

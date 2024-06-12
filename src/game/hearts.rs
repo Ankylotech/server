@@ -48,11 +48,15 @@ impl Game for Hearts {
         todo!()
     }
 
-    fn move_to_network(mv: Self::Move) -> [u8; 30] {
+    fn move_to_network(&self, mv: Self::Move) -> [u8; 30] {
         todo!()
     }
 
     fn print_state(&self) {
+        todo!()
+    }
+
+    fn default_move(&mut self, player: usize) {
         todo!()
     }
 }
