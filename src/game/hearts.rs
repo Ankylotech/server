@@ -40,11 +40,19 @@ impl Game for Hearts {
         todo!()
     }
 
+    fn make_move(&mut self, mv: Self::Move) {
+        todo!()
+    }
+
     fn get_gamestate(&self) -> GameState {
         todo!()
     }
 
     fn move_to_network(mv: Self::Move) -> [u8; 30] {
+        todo!()
+    }
+
+    fn print_state(&self) {
         todo!()
     }
 }

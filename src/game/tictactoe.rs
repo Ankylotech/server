@@ -35,7 +35,7 @@ impl TicTacToe {
         }
     }
 
-    fn legal_turns(&self) -> Vec<<TicTacToe as Game>::Move> {
+    pub fn legal_turns(&self) -> Vec<<TicTacToe as Game>::Move> {
         let mut turns = Vec::new();
 
         for i in 0..3 {
@@ -48,12 +48,7 @@ impl TicTacToe {
         turns
     }
 
-    fn take_turn(&mut self, turn: &<TicTacToe as Game>::Move) {
-        let x = turn / 3;
-        let y = turn % 3;
-        self.board[x as usize][y as usize] = if self.turn { 1 } else { -1 };
-        self.turn = !self.turn;
-    }
+
 }
 
 impl Game for TicTacToe {
@@ -72,11 +67,23 @@ impl Game for TicTacToe {
     }
 
     fn update(&self) -> [u8; 32] {
-        todo!()
+        let mut result = [0; 32];
+        for i in 0..3 {
+            for j in 0..3 {
+                result[i*3 + j] = (self.board[i][j] + 1) as u8;
+            }
+        }
+        result[9] = if self.turn { 1 } else { 0 };
+        result
     }
 
     fn apply_update(&mut self, update: [u8; 32]) {
-        todo!()
+        self.turn = if update[9] == 1 {true} else {false};
+        for i in 0..3 {
+            for j in 0..3 {
+                self.board[i][j] = update[i * 3 + j] as i32 - 1;
+            }
+        }
     }
 
     fn console_move(&mut self, name: &String) {
@@ -97,10 +104,17 @@ impl Game for TicTacToe {
             std::io::stdin().read_line(&mut input).expect("Error while reading input");
             input = input.trim().to_string();
         }
-        self.take_turn(&(input.parse::<u8>().unwrap() - 1));
+        self.make_move((input.parse::<u8>().unwrap() - 1));
     }
     fn network_move(&mut self, data: [u8; 30], received: usize, player: usize) {
-        todo!()
+        self.make_move(data[0]);
+    }
+
+    fn make_move(&mut self, turn: <TicTacToe as Game>::Move) {
+        let x = turn / 3;
+        let y = turn % 3;
+        self.board[x as usize][y as usize] = if self.turn { 1 } else { -1 };
+        self.turn = !self.turn;
     }
 
     fn get_gamestate(&self) -> GameState {
@@ -139,6 +153,10 @@ impl Game for TicTacToe {
         let mut l = [0;30];
         l[0] = mv;
         l
+    }
+
+    fn print_state(&self) {
+        self.print_game();
     }
     /*
     fn get_turn(&self) -> bool {

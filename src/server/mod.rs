@@ -4,25 +4,25 @@ use std::{thread,time};
 use std::cmp::PartialEq;
 use std::io;
 use crate::game::{Game, GameState};
-use crate::server::PlayerType::Console;
+use crate::server::PlayerType::{Console, Network};
+use crate::ais::AI;
 
-const TURN_TIME: time::Duration = time::Duration::from_millis(100);
+const TURN_TIME: time::Duration = time::Duration::from_millis(1000);
 
 pub struct Server<T: Game> {
-    players: Vec<Player>,
+    players: Vec<Player<T>>,
     game: T,
     socket: UdpSocket
 }
 
 impl<T: Game> Server<T> {
-    pub fn start(game: T) -> std::io::Result<Server<T>>{
+    pub fn start(game: T, mut players: Vec<Player<T>>) -> std::io::Result<Server<T>>{
         let socket = UdpSocket::bind("127.0.0.1:34254").expect("Failed to bind to address");
         socket.set_nonblocking(true)?;
         socket.set_multicast_loop_v4(false)?;
         socket.set_broadcast(true)?;
-        socket.send_to(&T::identifier(), "224.0.0.0:4").expect("Failed to send message");
+        socket.send_to(&T::identifier(), "255.255.255.255:34255").expect("Failed to send message");
         thread::sleep(time::Duration::from_secs(1));
-        let mut players = Vec::new();
         loop {
             let mut data = [0;30];
             match socket.recv_from(&mut data) {
@@ -37,7 +37,7 @@ impl<T: Game> Server<T> {
             io::stdin().read_line(&mut input_string).unwrap();
             players.push(Player {name: input_string.trim().to_string(), player_type: Console});
         }
-        println!("{:?}", players);
+        println!("{:?}", players.iter().map(|p| {&p.name}).collect::<Vec<&String>>());
         Ok(Server {players, game, socket})
     }
 
@@ -46,6 +46,7 @@ impl<T: Game> Server<T> {
     }
 
     pub fn print_result(&self) {
+        self.game.print_state();
         match self.game.get_gamestate() {
             GameState::ONGOING => (),
             GameState::DRAW => println!("The game was a draw"),
@@ -57,17 +58,19 @@ impl<T: Game> Server<T> {
         if !self.is_ongoing() {
             return;
         }
+        println!("getting the next move");
+        self.game.print_state();
         let notify = self.game.players_to_notify();
         let mut networks = Vec::new();
         let mut console = Vec::new();
         let mut local = Vec::new();
         for i in notify {
-            match self.players[i].player_type {
+            match &self.players[i].player_type {
                 PlayerType::Network(addr) => {
                     networks.push((self.players[i].name.clone(), addr));
                 },
                 PlayerType::Console => console.push(self.players[i].name.clone()),
-                PlayerType::Local => local.push(self.players[i].name.clone()),
+                PlayerType::Local(ai) => local.push((self.players[i].name.clone(), ai)),
             }
         }
         for (_, addr) in networks {
@@ -76,14 +79,20 @@ impl<T: Game> Server<T> {
         for (name) in &console {
             self.game.console_move(name);
         }
-        if (console.len() == 0) {
+        for (_, ai) in local {
+            self.game.make_move(ai.get_next_move(&self.game));
+        }
+        if console.len() == 0 {
             thread::sleep(TURN_TIME);
         }
         loop {
             let mut data = [0; 30];
             match self.socket.recv_from(&mut data) {
                 Ok((received, addr)) => {
-                    match self.players.iter().position(|p| p.player_type == PlayerType::Network(addr)) {
+                    match self.players.iter().position(|p| match p.player_type {
+                        Network(address) => address == addr,
+                        _ => false,
+                    }) {
                         Some(index) => self.game.network_move(data, received, index),
                         None => ()
                     }
@@ -91,17 +100,22 @@ impl<T: Game> Server<T> {
                 _ => break,
             }
         }
-        // TODO: local moves
+
     }
 }
-#[derive(Debug, PartialEq)]
-enum PlayerType {
+
+pub enum PlayerType<T: Game>{
     Console,
     Network(SocketAddr),
-    Local // TODO: relevant data for local players
+    Local(Box<dyn AI<T>>),
 }
-#[derive(Debug)]
-struct Player {
+pub struct Player<T: Game> {
     name: String,
-    player_type: PlayerType,
+    player_type: PlayerType<T>,
+}
+
+impl<T: Game> Player<T> {
+    pub fn new(name: String, player_type: PlayerType<T>) -> Player<T> {
+        Player {name, player_type}
+    }
 }

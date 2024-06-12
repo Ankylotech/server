@@ -1,5 +1,6 @@
 use std::net::{ SocketAddr, UdpSocket};
-use crate::game::Game;
+use crate::game::{Game, GameState};
+use crate::ais::AI;
 
 pub struct Client<T:Game, U:AI<T>> {
     game: T,
@@ -8,12 +9,13 @@ pub struct Client<T:Game, U:AI<T>> {
 }
 
 impl<T:Game, U:AI<T>> Client<T,U> {
-    pub fn new(game: T, ai: U, addr: SocketAddr) -> Client<T,U> {
-        let mut socket = UdpSocket::new("localhost");
+    pub fn new(game: T, ai: U, addr: SocketAddr) -> std::io::Result<Client<T,U>> {
+        let mut socket = UdpSocket::bind("127.0.0.1:34255")?;
         socket.set_nonblocking(false)?;
         socket.set_multicast_loop_v4(false)?;
         socket.connect(addr)?;
-        Client {game, ai, socket}
+        socket.send(ai.get_name().as_bytes())?;
+        Ok(Client {game, ai, socket})
     }
 
     pub fn listen(&mut self) {
@@ -25,12 +27,11 @@ impl<T:Game, U:AI<T>> Client<T,U> {
             }
             self.game.apply_update(update);
             let next = self.ai.get_next_move(&self.game);
-            self.socket.send(self.game.move_to_network(next)).expect("Failed to send move");
+            self.socket.send(&T::move_to_network(next)).expect("Failed to send move");
+            if self.game.get_gamestate() != GameState::ONGOING {
+                break;
+            }
         }
     }
 
-}
-
-pub trait AI<T:Game> {
-    fn get_next_move(self: &Self, state: &T) -> T::Move;
 }

@@ -43,7 +43,11 @@ pub trait Game {
 
     fn network_move(&mut self, data: [u8;30], received: usize, player: usize);
 
+    fn make_move(&mut self, mv: Self::Move);
+
     fn get_gamestate(&self) -> GameState;
 
     fn move_to_network(mv: Self::Move) -> [u8; 30];
+
+    fn print_state(&self);
 }
