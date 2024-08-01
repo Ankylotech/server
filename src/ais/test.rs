@@ -1,6 +1,6 @@
 use crate::ais::AI;
-use crate::game::{Game, GameState};
 use crate::game::tictactoe::TicTacToe;
+use crate::game::{Game, GameState};
 
 pub struct TicTacToeAI;
 
@@ -10,14 +10,19 @@ impl TicTacToeAI {
             return match state.get_gamestate() {
                 GameState::ONGOING => 0,
                 GameState::DRAW => 0,
-                GameState::WINNER(i) => -1
-            }
+                GameState::WINNER(i) => -1,
+            };
         }
-        -state.legal_turns().iter().map(|x| {
-            let mut s = state.clone();
-            s.make_move(*x);
-            Self::min_max_search(&mut s,depth-1)
-        }).min().unwrap()
+        -state
+            .legal_turns()
+            .iter()
+            .map(|x| {
+                let mut s = state.clone();
+                s.make_move(*x);
+                Self::min_max_search(&mut s, depth - 1)
+            })
+            .min()
+            .unwrap()
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::game::{Game, GameState};
 
-#[derive(Clone, PartialEq, Eq,Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct TicTacToe {
     board: [[i32; 3]; 3],
     turn: u8,
@@ -13,7 +13,6 @@ impl TicTacToe {
             turn: 0,
         }
     }
-
 
     fn print_game(&self) {
         for i in 0..3 {
@@ -47,15 +46,15 @@ impl TicTacToe {
         }
         turns
     }
-
-
 }
 
 impl Game for TicTacToe {
     type Move = u8;
 
     fn game_identifier() -> [u8; 6] {
-        ['t' as u8, 'i' as u8, 't' as u8, 'a' as u8, 't' as u8, 'o' as u8]
+        [
+            't' as u8, 'i' as u8, 't' as u8, 'a' as u8, 't' as u8, 'o' as u8,
+        ]
     }
 
     fn num_players() -> usize {
@@ -63,14 +62,18 @@ impl Game for TicTacToe {
     }
 
     fn players_to_notify(&self) -> Vec<usize> {
-        if (self.turn % 2 == 0) { vec![0] } else { vec![1] }
+        if (self.turn % 2 == 0) {
+            vec![0]
+        } else {
+            vec![1]
+        }
     }
 
     fn update(&self) -> [u8; 32] {
         let mut result = [0; 32];
         for i in 0..3 {
             for j in 0..3 {
-                result[i*3 + j] = (self.board[i][j] + 1) as u8;
+                result[i * 3 + j] = (self.board[i][j] + 1) as u8;
             }
         }
         result[9] = self.turn;
@@ -101,12 +104,15 @@ impl Game for TicTacToe {
         {
             println!("Input a legal number between 1 and 9");
             input = String::new();
-            std::io::stdin().read_line(&mut input).expect("Error while reading input");
+            std::io::stdin()
+                .read_line(&mut input)
+                .expect("Error while reading input");
             input = input.trim().to_string();
         }
         self.make_move((input.parse::<u8>().unwrap() - 1));
     }
     fn network_move(&mut self, data: [u8; 30], received: usize, player: usize) {
+        println!("received {:?}", data);
         if data[1] == self.turn && player as u8 == self.turn % 2 {
             self.make_move(data[0]);
         }
@@ -116,7 +122,7 @@ impl Game for TicTacToe {
         let x = turn / 3;
         let y = turn % 3;
         self.board[x as usize][y as usize] = if self.turn % 2 == 0 { 1 } else { -1 };
-        self.turn+= 1;
+        self.turn += 1;
     }
 
     fn get_gamestate(&self) -> GameState {
@@ -140,7 +146,7 @@ impl Game for TicTacToe {
         for i in 0..3 {
             for j in 0..3 {
                 if totals[i][j].abs() == 3 {
-                    return GameState::WINNER((-totals[i][j].signum() + 1 )as usize / 2);
+                    return GameState::WINNER((-totals[i][j].signum() + 1) as usize / 2);
                 }
             }
         }
@@ -151,8 +157,8 @@ impl Game for TicTacToe {
         }
     }
 
-    fn move_to_network(&self,mv: Self::Move) -> [u8; 30] {
-        let mut l = [0;30];
+    fn move_to_network(&self, mv: Self::Move) -> [u8; 30] {
+        let mut l = [0; 30];
         l[0] = mv;
         l[1] = self.turn;
         l

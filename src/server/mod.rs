@@ -1,32 +1,37 @@
-use std::net::UdpSocket;
-use std::net::SocketAddr;
-use std::{thread,time};
-use std::io;
+use crate::ais::AI;
 use crate::game::{Game, GameState};
 use crate::server::PlayerType::{Console, Network};
-use crate::ais::AI;
+use std::io;
+use std::net::SocketAddr;
+use std::net::UdpSocket;
+use std::{thread, time};
 
-const TURN_TIME: time::Duration = time::Duration::from_millis(100);
+const TURN_TIME: time::Duration = time::Duration::from_millis(500);
 
 pub struct Server<T: Game> {
     players: Vec<Player<T>>,
     game: T,
-    socket: UdpSocket
+    socket: UdpSocket,
 }
 
 impl<T: Game> Server<T> {
-    pub fn start(game: T, mut players: Vec<Player<T>>) -> std::io::Result<Server<T>>{
+    pub fn start(game: T, mut players: Vec<Player<T>>) -> std::io::Result<Server<T>> {
         let socket = UdpSocket::bind("127.0.0.1:34254").expect("Failed to bind to address");
         socket.set_nonblocking(true)?;
         socket.set_multicast_loop_v4(false)?;
         socket.set_broadcast(true)?;
-        socket.send_to(&T::identifier(), "255.255.255.255:34255").expect("Failed to send message");
+        socket
+            .send_to(&T::identifier(), "255.255.255.255:34255")
+            .expect("Failed to send message");
         thread::sleep(time::Duration::from_secs(1));
         loop {
-            let mut data = [0;30];
+            let mut data = [0; 30];
             match socket.recv_from(&mut data) {
-                Ok((received, addr)) => players.push(Player {name: String::from_utf8_lossy(&data[..received]).to_string(), player_type: PlayerType::Network(addr)}),
-                _ => break
+                Ok((received, addr)) => players.push(Player {
+                    name: String::from_utf8_lossy(&data[..received]).to_string(),
+                    player_type: PlayerType::Network(addr),
+                }),
+                _ => break,
             }
         }
         let mut input_string = String::new();
@@ -34,10 +39,23 @@ impl<T: Game> Server<T> {
             println!("Input the name of the next player:");
             input_string.clear();
             io::stdin().read_line(&mut input_string).unwrap();
-            players.push(Player {name: input_string.trim().to_string(), player_type: Console});
+            players.push(Player {
+                name: input_string.trim().to_string(),
+                player_type: Console,
+            });
         }
-        println!("{:?}", players.iter().map(|p| {&p.name}).collect::<Vec<&String>>());
-        Ok(Server {players, game, socket})
+        println!(
+            "{:?}",
+            players
+                .iter()
+                .map(|p| { &p.name })
+                .collect::<Vec<&String>>()
+        );
+        Ok(Server {
+            players,
+            game,
+            socket,
+        })
     }
 
     pub fn is_ongoing(&self) -> bool {
@@ -49,14 +67,20 @@ impl<T: Game> Server<T> {
         match self.game.get_gamestate() {
             GameState::ONGOING => (),
             GameState::DRAW => println!("The game was a draw"),
-            GameState::WINNER(index) => println!("Player {index}: {} won!", self.players[index].name),
+            GameState::WINNER(index) => {
+                println!("Player {index}: {} won!", self.players[index].name)
+            }
         }
     }
 
     pub fn notify_all(&self) {
-        for p in self.players {
+        for p in &self.players {
             match p.player_type {
-                Network(addr) => { self.socket.send_to(&self.game.update(), addr).expect("Error while sending update to players"); },
+                Network(addr) => {
+                    self.socket
+                        .send_to(&self.game.update(), addr)
+                        .expect("Error while sending update to players");
+                }
                 _ => (),
             }
         }
@@ -75,14 +99,16 @@ impl<T: Game> Server<T> {
         for i in notify {
             match &self.players[i].player_type {
                 PlayerType::Network(addr) => {
-                    networks.push((self.players[i].name.clone(), addr,i));
-                },
+                    networks.push((self.players[i].name.clone(), addr, i));
+                }
                 PlayerType::Console => console.push(self.players[i].name.clone()),
                 PlayerType::Local(ai) => local.push((self.players[i].name.clone(), ai)),
             }
         }
-        for (_, addr,_) in &networks {
-            self.socket.send_to(&self.game.update(),addr).expect("Error while sending update to players");
+        for (_, addr, _) in &networks {
+            self.socket
+                .send_to(&self.game.update(), addr)
+                .expect("Error while sending update to players");
         }
         for (name) in &console {
             self.game.console_move(name);
@@ -94,32 +120,49 @@ impl<T: Game> Server<T> {
             thread::sleep(TURN_TIME);
         }
         let mut recv = vec![false; self.players.len()];
+        let mut totals = 0;
         loop {
             let mut data = [0; 30];
+            if totals >= networks.len() {
+                break;
+            }
             match self.socket.recv_from(&mut data) {
                 Ok((received, addr)) => {
                     match self.players.iter().position(|p| match p.player_type {
                         Network(address) => address == addr,
                         _ => false,
                     }) {
-                        Some(index) => { recv[index] = true; self.game.network_move(data, received, index) },
-                        None => ()
+                        Some(index) => {
+                            if !recv[index] {
+                                totals += 1;
+                                recv[index] = true;
+                                println!("received message from player");
+                                self.game.network_move(data, received, index)
+                            }
+                        }
+                        None => println!("address did not match"),
                     }
                 }
                 _ => break,
             }
         }
-        for (name,_, index) in networks {
+        loop {
+            let mut data = [0; 30];
+            match self.socket.recv_from(&mut data) {
+                Ok(_) => (),
+                _ => break,
+            }
+        }
+        for (name, _, index) in networks {
             if !recv[index] {
-                println!("{} took to long an will make the default move", name);
+                println!("{} took too long an will make the default move", name);
                 self.game.default_move(index);
             }
         }
-
     }
 }
 
-pub enum PlayerType<T: Game>{
+pub enum PlayerType<T: Game> {
     Console,
     Network(SocketAddr),
     Local(Box<dyn AI<T>>),
@@ -131,6 +174,6 @@ pub struct Player<T: Game> {
 
 impl<T: Game> Player<T> {
     pub fn new(name: String, player_type: PlayerType<T>) -> Player<T> {
-        Player {name, player_type}
+        Player { name, player_type }
     }
 }
